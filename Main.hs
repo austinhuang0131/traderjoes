@@ -2,10 +2,10 @@ module Main where
 
 import Control.Concurrent.Async
 import Control.Monad
+import Data.Aeson ( encodeFile, ToJSON, toEncoding, defaultOptions, genericToEncoding )
 import Data.ByteString.Lazy (ByteString)
 import Data.ByteString.Lazy qualified as L
 import Data.FileEmbed (embedStringFile)
-import Data.Maybe
 import Data.Time (defaultTimeLocale, formatTime, getCurrentTimeZone, utcToLocalTime)
 import Data.Time.Clock.POSIX
 import Database.SQLite.Simple qualified as SQL
@@ -20,7 +20,6 @@ import Text.Blaze.Html5 ((!))
 import Text.Blaze.Html5 qualified as H
 import Text.Blaze.Html5.Attributes qualified as A
 import Text.Blaze.Internal qualified as A
-import Text.Read (readMaybe)
 
 main :: IO ()
 main = getArgs >>= handleArgs
@@ -46,13 +45,13 @@ stores =
 handleArgs :: [String] -> IO ()
 handleArgs ["gen"] = do
   conn <- openDB
-  changes <- priceChanges conn
+  setupCleanDirectory "site"
+  printlog "writing to ./site"
+  mapConcurrently_ (priceChangesJson conn) stores
   allitems <- latestPrices conn
   SQL.close conn
   ts <- showTime
-  let html = renderPage $ pageBody changes allitems ts
-  setupCleanDirectory "site"
-  printlog "writing to ./site"
+  let html = renderPage $ pageBody allitems ts
   L.writeFile "site/index.html" html
 handleArgs ["fetch"] = do
   conn <- openDB
@@ -72,8 +71,8 @@ scrapeStore conn store = do
   mapM_ (insert conn (fst store)) items
 
 -- | Generate the home page html body.
-pageBody :: [PriceChange] -> [DBItem] -> String -> H.Html
-pageBody changes items timestamp = do
+pageBody :: [DBItem] -> String -> H.Html
+pageBody items timestamp = do
   H.i . H.toMarkup $ "Last updated: " ++ timestamp
   H.br
   H.a ! A.class_ "underline" ! A.href "https://github.com/cmoog/traderjoes" ! A.target "_blank" $ "Source code"
@@ -94,9 +93,8 @@ pageBody changes items timestamp = do
     H.input ! A.required "" ! A.name "email" ! A.type_ "email" ! A.class_ "formInput input-lg" ! A.placeholder "example@gmail.com"
     H.button ! A.type_ "submit" ! A.class_ "btn primary" ! A.title "Email address" $ "Sign Up"
   H.h2 "Price Changes"
-  H.table ! A.class_ "table table-striped table-gray" $ do
+  H.table ! A.class_ "table table-striped table-gray" ! A.id "price-changes" $ do
     H.thead . H.tr . H.toMarkup $ H.th <$> ["Date Changed", "Item Name", "Old Price", "New Price"]
-    H.tbody . H.toMarkup $ displayPriceChange <$> changes
   H.h2 "All Items"
   H.table ! A.class_ "table table-striped table-gray" $ do
     H.thead . H.tr . H.toMarkup $ H.th <$> ["Item Name", "Retail Price"]
@@ -125,20 +123,6 @@ displayDBItem (DBItem{ditem_title, dretail_price, dsku}) = H.tr $ do
   H.td $ H.a ! A.href (productUrl dsku) ! A.target "_blank" $ H.toHtml ditem_title
   H.td $ H.toHtml dretail_price
 
--- | Display the price change as a table row.
-displayPriceChange :: PriceChange -> H.Html
-displayPriceChange (PriceChange{pitem_title, pbefore_price, pafter_price, pafter_date, psku}) = H.tr $ do
-  H.td $ H.toHtml pafter_date
-  H.td $ H.a ! A.href (productUrl psku) ! A.target "_blank" $ H.toHtml pitem_title
-  H.td $ H.toHtml pbefore_price
-  H.td ! A.class_ (H.toValue $ priceChangeClass (pbefore_price, pafter_price)) $ H.toHtml pafter_price
-
--- | Color the price change table cell based on whether the price increased or decreased.
-priceChangeClass :: (String, String) -> String
-priceChangeClass (before, after) = fromMaybe "" $ do
-  beforeNum <- readMaybe before :: Maybe Float
-  afterNum <- readMaybe after :: Maybe Float
-  pure $ if beforeNum > afterNum then "green" else "red"
 
 -- | Display store as a dropdown option.
 displayStoreItemOption :: (String, String) -> H.Html
@@ -169,19 +153,23 @@ latestPrices conn = SQL.query_ conn $(embedStringFile "./sql/latest-prices.sql")
 data PriceChange = PriceChange
   { psku :: String
   , pitem_title :: String
-  , pbefore_price :: String
-  , pafter_price :: String
-  , pbefore_date :: String
-  , pafter_date :: String
+  , pbefore_price :: Maybe String
+  , pafter_price :: Maybe String
+  , pbefore_date :: Maybe String
+  , pafter_date :: Maybe String
   , pstore_code :: String
   }
   deriving (Generic, Show)
 
 instance SQL.FromRow PriceChange
 
--- | Each change in item `retail_price` partitioned by `sku` and `store_code`.
-priceChanges :: SQL.Connection -> IO [PriceChange]
-priceChanges conn = SQL.query_ conn $(embedStringFile "./sql/price-changes.sql")
+instance ToJSON PriceChange where
+  toEncoding = genericToEncoding defaultOptions
+
+priceChangesJson :: SQL.Connection -> (String, String) -> IO ()
+priceChangesJson conn store = do
+  changes <- SQL.query conn $(embedStringFile "./sql/price-changes.sql") [fst store] :: IO[PriceChange]
+  encodeFile ("site/prices-" <> fst store <> ".json") changes
 
 openDB :: IO SQL.Connection
 openDB = do
