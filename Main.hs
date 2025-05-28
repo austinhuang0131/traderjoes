@@ -35,6 +35,14 @@ help =
 printlog :: String -> IO ()
 printlog = hPutStrLn stderr
 
+stores :: [(String, String)]
+stores =
+  [ ("701", "Chicago South Loop")
+  , ("31", "Los Angeles")
+  , ("546", "NYC East Village")
+  , ("452", "Austin Seaholm")
+  ]
+
 handleArgs :: [String] -> IO ()
 handleArgs ["gen"] = do
   conn <- openDB
@@ -48,12 +56,6 @@ handleArgs ["gen"] = do
   L.writeFile "site/index.html" html
 handleArgs ["fetch"] = do
   conn <- openDB
-  let stores =
-        [ "701" -- Chicago South Loop
-        , "31" -- Los Angeles
-        , "546" -- NYC East Village
-        , "452" -- Austin Seaholm
-        ]
   printlog $ "fetching stores: " <> show stores
   SQL.withTransaction conn $
     mapConcurrently_ (scrapeStore conn) stores
@@ -64,10 +66,10 @@ handleArgs ["fetch"] = do
 handleArgs _ = printlog help >> exitFailure
 
 -- | Fetch all items for the store and insert into the given database.
-scrapeStore :: SQL.Connection -> String -> IO ()
+scrapeStore :: SQL.Connection -> (String, String) -> IO ()
 scrapeStore conn store = do
-  items <- allItemsByStore store
-  mapM_ (insert conn store) items
+  items <- allItemsByStore (fst store)
+  mapM_ (insert conn (fst store)) items
 
 -- | Generate the home page html body.
 pageBody :: [PriceChange] -> [DBItem] -> String -> H.Html
