@@ -92,6 +92,11 @@ pageBody items timestamp = do
     H.label ! A.for "email" $ "Sign up for a weekly email of price changes."
     H.input ! A.required "" ! A.name "email" ! A.type_ "email" ! A.class_ "formInput input-lg" ! A.placeholder "example@gmail.com"
     H.button ! A.type_ "submit" ! A.class_ "btn primary" ! A.title "Email address" $ "Sign Up"
+  H.h2 "Price Chart"
+  H.label ! A.for "item-select" $ do
+    "Select item(s)"
+    H.select ! A.class_ "dropdown" ! A.name "items[]" ! A.id "item-select" ! A.multiple "multiple" $ do
+      H.toMarkup $ displayDBItemOption <$> items
   H.h2 "Price Changes"
   H.table ! A.class_ "table table-striped table-gray" ! A.id "price-changes" $ do
     H.thead . H.tr . H.toMarkup $ H.th <$> ["Date Changed", "Item Name", "Old Price", "New Price"]
@@ -115,6 +120,11 @@ renderPage page = renderHtml $ H.html $ do
     H.script $(embedStringFile "./script.js")
     H.style $(embedStringFile "./style.css")
     H.toMarkup page
+
+-- | Display item as a dropdown option.
+displayDBItemOption :: DBItem -> H.Html
+displayDBItemOption (DBItem{ditem_title, dsku}) =
+  H.option ! A.value (H.toValue dsku) $ H.toHtml (ditem_title <> " (" <> dsku <> ")")
 
 -- | Display store as a dropdown option.
 displayStoreItemOption :: (String, String) -> H.Html
