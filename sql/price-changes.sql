@@ -58,6 +58,5 @@ FROM
   Result
 WHERE
   store_code = ?
-  AND before_date IS NOT NULL
 ORDER BY
   next_inserted_at DESC;

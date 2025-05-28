@@ -97,6 +97,8 @@ pageBody items timestamp = do
     "Select item(s)"
     H.select ! A.class_ "dropdown" ! A.name "items[]" ! A.id "item-select" ! A.multiple "multiple" $ do
       H.toMarkup $ displayDBItemOption <$> items
+  H.div ! A.class_ "chart-container" $ do
+    H.canvas ! A.id "chart" $ ""
   H.h2 "Price Changes"
   H.table ! A.class_ "table table-striped table-gray" ! A.id "price-changes" $ do
     H.thead . H.tr . H.toMarkup $ H.th <$> ["Date Changed", "Item Name", "Old Price", "New Price"]
@@ -115,6 +117,8 @@ renderPage page = renderHtml $ H.html $ do
     H.script ! A.src "https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js" $ ""
     H.link ! A.href "https://cdn.jsdelivr.net/npm/select2@4/dist/css/select2.min.css" ! A.rel "stylesheet"
     H.script ! A.src "https://cdn.jsdelivr.net/npm/select2@4/dist/js/select2.min.js" $ ""
+    H.script ! A.src "https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" $ ""
+    H.script ! A.src "https://cdn.jsdelivr.net/npm/chartjs-adapter-intl@0.1/dist/chartjs-adapter-intl.umd.min.js" $ ""
     H.title "Trader Joe's Prices"
   H.body $ do
     H.script $(embedStringFile "./script.js")
