@@ -82,8 +82,12 @@ pageBody changes items timestamp = do
   H.br
   H.br
   H.strong ! A.style "font-size: 1.15em; font-family: serif" $ do
-    H.i "Disclaimer: This website is not affiliated, associated, authorized, endorsed by, or in any way officially connected with Trader Joe's, or any of its subsidiaries or its affiliates. All prices are sourced from Trader Joe's South Loop in Chicago, IL (store code 701). There may be regional price differences from those listed on this site. This website may include discontinued or unavailable products."
+    H.i "Disclaimer: This website is not affiliated, associated, authorized, endorsed by, or in any way officially connected with Trader Joe's, or any of its subsidiaries or its affiliates. There may be regional price differences from those listed on this site. This website may include discontinued or unavailable products."
   H.br
+  H.label ! A.for "store-select" $ do
+    "Select store"
+    H.select ! A.class_ "dropdown" ! A.name "store" ! A.id "store-select" $ do
+      H.toMarkup $ displayStoreItemOption <$> stores
   H.h1 "(Unofficial) Trader Joe's Price Tracking"
   H.form ! A.action "signup" ! A.class_ "signup-form" ! A.role "form" $ do
     H.label ! A.for "email" $ "Sign up for a weekly email of price changes."
@@ -106,8 +110,12 @@ renderPage page = renderHtml $ H.html $ do
     H.meta ! A.name "viewport" ! A.content "width=device-width, initial-scale=1.0"
     H.meta ! A.name "description" ! A.content "Daily Tracking of Trader Joe's Price Changes"
     H.meta ! A.name "keywords" ! A.content "trader joes, prices, price tracking"
+    H.script ! A.src "https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js" $ ""
+    H.link ! A.href "https://cdn.jsdelivr.net/npm/select2@4/dist/css/select2.min.css" ! A.rel "stylesheet"
+    H.script ! A.src "https://cdn.jsdelivr.net/npm/select2@4/dist/js/select2.min.js" $ ""
     H.title "Trader Joe's Prices"
   H.body $ do
+    H.script $(embedStringFile "./script.js")
     H.style $(embedStringFile "./style.css")
     H.toMarkup page
 
@@ -131,6 +139,11 @@ priceChangeClass (before, after) = fromMaybe "" $ do
   beforeNum <- readMaybe before :: Maybe Float
   afterNum <- readMaybe after :: Maybe Float
   pure $ if beforeNum > afterNum then "green" else "red"
+
+-- | Display store as a dropdown option.
+displayStoreItemOption :: (String, String) -> H.Html
+displayStoreItemOption (store_id, name) =
+  H.option ! A.value (H.toValue store_id) $ H.toHtml (name <> " (" <> store_id <> ")")
 
 -- | URL to the product detail page by `sku`.
 productUrl :: String -> H.AttributeValue
