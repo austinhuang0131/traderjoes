@@ -96,9 +96,8 @@ pageBody items timestamp = do
   H.table ! A.class_ "table table-striped table-gray" ! A.id "price-changes" $ do
     H.thead . H.tr . H.toMarkup $ H.th <$> ["Date Changed", "Item Name", "Old Price", "New Price"]
   H.h2 "All Items"
-  H.table ! A.class_ "table table-striped table-gray" $ do
+  H.table ! A.class_ "table table-striped table-gray" ! A.id "current-prices" $ do
     H.thead . H.tr . H.toMarkup $ H.th <$> ["Item Name", "Retail Price"]
-    H.tbody . H.toMarkup $ displayDBItem <$> items
 
 -- | Render the given page body with html head/styles/meta.
 renderPage :: (H.ToMarkup a) => a -> ByteString
@@ -116,13 +115,6 @@ renderPage page = renderHtml $ H.html $ do
     H.script $(embedStringFile "./script.js")
     H.style $(embedStringFile "./style.css")
     H.toMarkup page
-
--- | Display item as a table row.
-displayDBItem :: DBItem -> H.Html
-displayDBItem (DBItem{ditem_title, dretail_price, dsku}) = H.tr $ do
-  H.td $ H.a ! A.href (productUrl dsku) ! A.target "_blank" $ H.toHtml ditem_title
-  H.td $ H.toHtml dretail_price
-
 
 -- | Display store as a dropdown option.
 displayStoreItemOption :: (String, String) -> H.Html

@@ -6,6 +6,7 @@ $(document).ready(() => {
   let storeHandler = _ => {
     let storeId = $('#store-select').select2('data')[0].id;
     $('.price-changes').remove();
+    $('.current-prices').remove();
     fetch(`./prices-${storeId}.json`)
       .then(r => { return r.json(); })
       .then(r => {
@@ -25,6 +26,17 @@ $(document).ready(() => {
                 .addClass(d.pbefore_price > d.pafter_price ? 'green' : 'red')
                 .text(d.pafter_price)
             ).appendTo('#price-changes');
+          }
+          else if (d.pafter_date == null) {
+            $('<tr>').addClass('current-prices').append(
+              $('<td>').append(
+                $('<a>')
+                  .attr('href', `https://traderjoes.com/home/products/pdp/${d.psku}`)
+                  .attr('target', '_blank')
+                  .text(d.pitem_title)
+              ),
+              $('<td>').text(d.pbefore_price)
+            ).appendTo('#current-prices');
           }
         }
       });
